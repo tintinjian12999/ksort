@@ -87,13 +87,15 @@ static void qsort_algo(struct work_struct *w)
 
     bool do_free = true;
     char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
-    int d, r, swaptype, swap_cnt;
+    int d, r, swaptype, swap_cnt = 0;
     void *a;      /* Array of elements. */
     size_t n, es; /* Number of elements; size. */
     cmp_t *cmp;
     size_t nl, nr;
     struct common *c;
-
+    int cpu = get_cpu();
+    pr_info("sort: [CPU#%d] %s\n", cpu, __func__);
+    put_cpu();
     /* Initialize qsort arguments. */
     c = qs->common;
     es = c->es;
@@ -103,7 +105,6 @@ static void qsort_algo(struct work_struct *w)
     n = qs->n;
 top:
     /* From here on qsort(3) business as usual. */
-    swap_cnt = 0;
     if (n < 7) {
         for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
             for (pl = pm; pl > (char *) a && CMP(thunk, pl - es, pl) > 0;
@@ -125,12 +126,12 @@ top:
     }
     q_swap(a, pm);
     pa = pb = (char *) a + es;
-
     pc = pd = (char *) a + (n - 1) * es;
     for (;;) {
         while (pb <= pc && (r = CMP(thunk, pb, a)) <= 0) {
             if (r == 0) {
-                swap_cnt = 1;
+                if (swap_cnt == 0)
+                    swap_cnt = 1;
                 q_swap(pa, pb);
                 pa += es;
             }
@@ -138,7 +139,8 @@ top:
         }
         while (pb <= pc && (r = CMP(thunk, pc, a)) >= 0) {
             if (r == 0) {
-                swap_cnt = 1;
+                if (swap_cnt == 0)
+                    swap_cnt = 1;
                 q_swap(pc, pd);
                 pd -= es;
             }
@@ -198,6 +200,7 @@ nevermind:
         kfree(qs);
 }
 
+
 void sort_main(void *sort_buffer, size_t size, size_t es, cmp_t cmp)
 {
     /* The allocation must be dynamic so that the pointer can be reliably freed
@@ -208,8 +211,7 @@ void sort_main(void *sort_buffer, size_t size, size_t es, cmp_t cmp)
         .swaptype = ((char *) sort_buffer - (char *) 0) % sizeof(long) ||
                             es % sizeof(long)
                         ? 2
-                    : es == sizeof(long) ? 0
-                                         : 1,
+                        : es == sizeof(long) ? 0 : 1,
         .es = es,
         .cmp = cmp,
     };

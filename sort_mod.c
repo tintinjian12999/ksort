@@ -42,7 +42,7 @@ static ssize_t sort_read(struct file *file,
 {
     unsigned long len;
     size_t es;
-
+    static ktime_t kt;
     void *sort_buffer = kmalloc(size, GFP_KERNEL);
     if (!sort_buffer)
         return 0;
@@ -59,14 +59,17 @@ static ssize_t sort_read(struct file *file,
      * various types in the future.
      */
     es = sizeof(int);
+
+    kt = ktime_get();
     sort_main(sort_buffer, size / es, es, num_compare);
+    kt = ktime_sub(ktime_get(), kt);
 
     len = copy_to_user(buf, sort_buffer, size);
     if (len != 0)
         return 0;
 
     kfree(sort_buffer);
-    return size;
+    return ktime_to_ns(kt);
 }
 
 static ssize_t sort_write(struct file *file,

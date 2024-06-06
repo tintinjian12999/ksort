@@ -14,36 +14,45 @@ int main()
         goto error;
     }
 
-    size_t n_elements = 1000;
-    size_t size = n_elements * sizeof(int);
-    int *inbuf = malloc(size);
-    if (!inbuf)
-        goto error;
+    size_t n_elements = 100;
+    FILE *time_f;
+    time_f = fopen("time.txt", "w");
+    for (size_t n = 1; n < n_elements + 1; n++) {
+        size_t size = n * sizeof(int);
+        int *inbuf = malloc(size);
 
-    for (size_t i = 0; i < n_elements; i++)
-        inbuf[i] = rand() % n_elements;
+        if (!inbuf)
+            goto error;
 
-    ssize_t r_sz = read(fd, inbuf, size);
-    if (r_sz != size) {
-        perror("Failed to write character device");
-        goto error;
-    }
+        for (size_t i = 0; i < n; i++)
+            inbuf[i] = rand() % n;
 
-    bool pass = true;
-    int ret = 0;
-    /* Verify the result of sorting */
-    for (size_t i = 1; i < n_elements; i++) {
-        if (inbuf[i] < inbuf[i - 1]) {
-            pass = false;
-            break;
+        ssize_t r_sz = read(fd, inbuf, size);
+
+        bool pass = true;
+        /* Verify the result of sorting */
+        for (size_t i = 1; i < n; i++) {
+            if (inbuf[i] < inbuf[i - 1]) {
+                pass = false;
+                break;
+            }
         }
+
+
+        if (time_f == NULL) {
+            printf("Failed to open file \n");
+            goto error;
+        }
+
+        fprintf(time_f, "%zu %ld \n", n, r_sz);
+
+        if (!pass)
+            printf("Sorting failed!\n");
+    error:
+        free(inbuf);
     }
-
-    printf("Sorting %s!\n", pass ? "succeeded" : "failed");
-
-error:
-    free(inbuf);
+    fclose(time_f);
     if (fd > 0)
         close(fd);
-    return ret;
+    return 0;
 }
