@@ -2,8 +2,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
-
 #define KSORT_DEV "/dev/sort"
 
 int main()
@@ -13,7 +13,7 @@ int main()
         perror("Failed to open character device");
         goto error;
     }
-
+    struct timespec tt1, tt2;
     size_t n_elements = 100;
     FILE *time_f;
     time_f = fopen("time.txt", "w");
@@ -27,7 +27,9 @@ int main()
         for (size_t i = 0; i < n; i++)
             inbuf[i] = rand() % n;
 
+        clock_gettime(CLOCK_REALTIME, &tt1);
         ssize_t r_sz = read(fd, inbuf, size);
+        clock_gettime(CLOCK_REALTIME, &tt2);
 
         bool pass = true;
         /* Verify the result of sorting */
@@ -44,7 +46,9 @@ int main()
             goto error;
         }
 
-        fprintf(time_f, "%zu %ld \n", n, r_sz);
+        ssize_t tt1_ns = tt1.tv_sec * 1000000000LL + tt1.tv_nsec;
+        ssize_t tt2_ns = tt2.tv_sec * 1000000000LL + tt2.tv_nsec;
+        fprintf(time_f, "%zu %ld %ld \n", n, r_sz, tt2_ns - tt1_ns);
 
         if (!pass)
             printf("Sorting failed!\n");
