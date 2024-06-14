@@ -14,15 +14,17 @@ int main()
         goto error;
     }
     struct timespec tt1, tt2;
-    size_t n_elements = 100;
+    size_t n_elements = 20000;
     FILE *time_f;
     time_f = fopen("time.txt", "w");
-    for (size_t n = 1; n < n_elements + 1; n++) {
+    for (size_t n = 1000; n < n_elements + 1; n = n + 1000) {
         size_t size = n * sizeof(int);
         int *inbuf = malloc(size);
 
-        if (!inbuf)
+        if (!inbuf) {
+            printf("error while allocating inbuf");
             goto error;
+        }
 
         for (size_t i = 0; i < n; i++)
             inbuf[i] = rand() % n;
@@ -50,8 +52,8 @@ int main()
         ssize_t tt2_ns = tt2.tv_sec * 1000000000LL + tt2.tv_nsec;
         fprintf(time_f, "%zu %ld %ld \n", n, r_sz, tt2_ns - tt1_ns);
 
-        if (!pass)
-            printf("Sorting failed!\n");
+        if (pass)
+            printf("Sorting pass!\n");
     error:
         free(inbuf);
     }

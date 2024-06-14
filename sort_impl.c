@@ -67,8 +67,15 @@ struct qsort {
     size_t n;
 };
 
+struct libsort {
+    struct work_struct w;
+    struct common *common;
+    void *a;
+    size_t n;
+};
 #define thunk NULL
 static void qsort_algo(struct work_struct *w);
+static void libsort_algo(struct work_struct *w);
 
 static void init_qsort(struct qsort *q,
                        void *elems,
@@ -79,6 +86,33 @@ static void init_qsort(struct qsort *q,
     q->a = elems;
     q->n = size;
     q->common = common;
+}
+
+static void init_libsort(struct libsort *ls,
+                         void *elems,
+                         size_t size,
+                         struct common *common)
+{
+    INIT_WORK(&ls->w, libsort_algo);
+    ls->a = elems;
+    ls->n = size;
+    ls->common = common;
+}
+
+static void libsort_algo(struct work_struct *w)
+{
+    struct libsort *ls = container_of(w, struct libsort, w);
+
+    void *a;      /* Array of elements. */
+    size_t n, es; /* Number of elements; size. */
+    cmp_t *cmp;
+    struct common *c;
+    c = ls->common;
+    a = ls->a;
+    n = ls->n;
+    es = c->es;
+    cmp = c->cmp;
+    sort(a, n, es, cmp, NULL);
 }
 
 static void qsort_algo(struct work_struct *w)
@@ -201,12 +235,15 @@ nevermind:
 }
 
 
-void sort_main(void *sort_buffer, size_t size, size_t es, cmp_t cmp)
+void sort_main(void *sort_buffer,
+               size_t size,
+               size_t es,
+               cmp_t cmp,
+               int sort_type)
 {
     /* The allocation must be dynamic so that the pointer can be reliably freed
      * within the work function.
      */
-    struct qsort *q = kmalloc(sizeof(struct qsort), GFP_KERNEL);
     struct common common = {
         .swaptype = ((char *) sort_buffer - (char *) 0) % sizeof(long) ||
                             es % sizeof(long)
@@ -215,14 +252,36 @@ void sort_main(void *sort_buffer, size_t size, size_t es, cmp_t cmp)
         .es = es,
         .cmp = cmp,
     };
+    switch (sort_type) {
+    case QSORT:
+        printk(KERN_INFO "Doing QSORT now \n");
+        struct qsort *q = kmalloc(sizeof(struct qsort), GFP_KERNEL);
 
-    init_qsort(q, sort_buffer, size, &common);
 
-    queue_work(workqueue, &q->w);
+        init_qsort(q, sort_buffer, size, &common);
 
-    /* Ensure completion of all work before proceeding, as reliance on objects
-     * allocated on the stack necessitates this. If not, there is a risk of
-     * the work item referencing a pointer that has ceased to exist.
-     */
-    drain_workqueue(workqueue);
+        queue_work(workqueue, &q->w);
+
+        /* Ensure completion of all work before proceeding, as reliance on
+         * objects allocated on the stack necessitates this. If not, there is a
+         * risk of the work item referencing a pointer that has ceased to exist.
+         */
+        drain_workqueue(workqueue);
+        break;
+    case LIBSORT:
+        printk(KERN_INFO "Doing LIBSORT now \n");
+        struct libsort *ls = kmalloc(sizeof(struct libsort), GFP_KERNEL);
+        init_libsort(ls, sort_buffer, size, &common);
+        queue_work(workqueue, &ls->w);
+        drain_workqueue(workqueue);
+        break;
+    case TIMSORT:
+        printk(KERN_INFO "Doing TIMSORT now \n");
+
+        break;
+    case PDQSORT:
+        printk(KERN_INFO "Doing PDQSORT now \n");
+
+        break;
+    }
 }

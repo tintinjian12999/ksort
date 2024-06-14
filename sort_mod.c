@@ -61,7 +61,7 @@ static ssize_t sort_read(struct file *file,
     es = sizeof(int);
 
     kt = ktime_get();
-    sort_main(sort_buffer, size / es, es, num_compare);
+    sort_main(sort_buffer, size / es, es, num_compare, 1);
     kt = ktime_sub(ktime_get(), kt);
 
     len = copy_to_user(buf, sort_buffer, size);
