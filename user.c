@@ -2,12 +2,30 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
+#define QSORT 0
+#define LIBSORT 1
+#define TIMSORT 2
+#define PDQSORT 3
 #define KSORT_DEV "/dev/sort"
 
-int main()
+int main(int argc, char **argv)
 {
+    unsigned int sort_method = QSORT;
+    if (argc > 1) {
+        if (strcmp(argv[1], "qsort") == 0) {
+            sort_method = QSORT;
+        } else if (strcmp(argv[1], "libsort") == 0) {
+            sort_method = LIBSORT;
+        } else {
+            fprintf(stderr,
+                    "Invalid sort method. Use ./user [ksort|libsort]\n");
+            return -1;
+        }
+    }
     int fd = open(KSORT_DEV, O_RDWR);
     if (fd < 0) {
         perror("Failed to open character device");
@@ -17,6 +35,7 @@ int main()
     size_t n_elements = 20000;
     FILE *time_f;
     time_f = fopen("time.txt", "w");
+    ioctl(fd, sort_method);
     for (size_t n = 1000; n < n_elements + 1; n = n + 1000) {
         size_t size = n * sizeof(int);
         int *inbuf = malloc(size);
@@ -52,8 +71,8 @@ int main()
         ssize_t tt2_ns = tt2.tv_sec * 1000000000LL + tt2.tv_nsec;
         fprintf(time_f, "%zu %ld %ld \n", n, r_sz, tt2_ns - tt1_ns);
 
-        if (pass)
-            printf("Sorting pass!\n");
+        if (!pass)
+            printf("Sorting failed!\n");
     error:
         free(inbuf);
     }

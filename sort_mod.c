@@ -13,12 +13,18 @@ MODULE_DESCRIPTION("Concurrent sorting driver");
 MODULE_VERSION("0.1");
 
 #define DEVICE_NAME "sort"
-
+static int sort_method = 0;
 static dev_t dev = -1;
 static struct cdev cdev;
 static struct class *class;
 
 struct workqueue_struct *workqueue;
+
+static long set_method(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    sort_method = cmd;  // 設置當前排序方法
+    return 0;
+}
 
 static int sort_open(struct inode *inode, struct file *file)
 {
@@ -61,7 +67,7 @@ static ssize_t sort_read(struct file *file,
     es = sizeof(int);
 
     kt = ktime_get();
-    sort_main(sort_buffer, size / es, es, num_compare, 1);
+    sort_main(sort_buffer, size / es, es, num_compare, sort_method);
     kt = ktime_sub(ktime_get(), kt);
 
     len = copy_to_user(buf, sort_buffer, size);
@@ -86,6 +92,7 @@ static const struct file_operations fops = {
     .open = sort_open,
     .release = sort_release,
     .owner = THIS_MODULE,
+    .unlocked_ioctl = set_method,
 };
 
 static int __init sort_init(void)
