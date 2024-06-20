@@ -1,11 +1,10 @@
 #include <linux/slab.h>
 #include <linux/sort.h>
 #include <linux/workqueue.h>
-
 #include "sort.h"
 
+
 static inline char *med3(char *, char *, char *, cmp_t *, void *);
-static inline void swapfunc(char *, char *, int, int);
 
 /* Qsort routine from Bentley & McIlroy's "Engineering a Sort Function" */
 #define swapcode(TYPE, parmi, parmj, n) \
@@ -139,6 +138,7 @@ static void qsort_algo(struct work_struct *w)
     n = qs->n;
 top:
     /* From here on qsort(3) business as usual. */
+
     if (n < 7) {
         for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
             for (pl = pm; pl > (char *) a && CMP(thunk, pl - es, pl) > 0;
@@ -239,7 +239,7 @@ void sort_main(void *sort_buffer,
                size_t size,
                size_t es,
                cmp_t cmp,
-               int sort_type)
+               size_t sort_type)
 {
     /* The allocation must be dynamic so that the pointer can be reliably freed
      * within the work function.

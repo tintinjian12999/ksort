@@ -14,6 +14,6 @@ void sort_main(void *sort_buffer,
                size_t size,
                size_t es,
                cmp_t cmp,
-               int sort_type);
+               size_t sort_type);
 
 #endif

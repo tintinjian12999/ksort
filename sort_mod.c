@@ -17,12 +17,12 @@ static int sort_method = 0;
 static dev_t dev = -1;
 static struct cdev cdev;
 static struct class *class;
-
+static size_t cmp_cnt = 0;
 struct workqueue_struct *workqueue;
 
 static long set_method(struct file *file, unsigned int cmd, unsigned long arg)
 {
-    sort_method = cmd;  // 設置當前排序方法
+    sort_method = cmd;  // Setting the sorting method
     return 0;
 }
 
@@ -38,6 +38,7 @@ static int sort_release(struct inode *inode, struct file *file)
 
 static int num_compare(const void *a, const void *b)
 {
+    cmp_cnt++;
     return (*(int *) a - *(int *) b);
 }
 
@@ -65,7 +66,7 @@ static ssize_t sort_read(struct file *file,
      * various types in the future.
      */
     es = sizeof(int);
-
+    cmp_cnt = 0;
     kt = ktime_get();
     sort_main(sort_buffer, size / es, es, num_compare, sort_method);
     kt = ktime_sub(ktime_get(), kt);
@@ -83,7 +84,7 @@ static ssize_t sort_write(struct file *file,
                           size_t size,
                           loff_t *offset)
 {
-    return 0;
+    return cmp_cnt;
 }
 
 static const struct file_operations fops = {
@@ -98,7 +99,6 @@ static const struct file_operations fops = {
 static int __init sort_init(void)
 {
     struct device *device;
-
     printk(KERN_INFO DEVICE_NAME ": loaded\n");
 
     if (alloc_chrdev_region(&dev, 0, 1, DEVICE_NAME) < 0)
