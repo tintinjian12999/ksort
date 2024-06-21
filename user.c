@@ -10,12 +10,16 @@
 #define LIBSORT 1
 #define TIMSORT 2
 #define PDQSORT 3
-
+#define RAND 0
+#define SAWTOOTH 1
+#define STAGGER 2
+#define SHUFFLE 3
 #define KSORT_DEV "/dev/sort"
 
 int main(int argc, char **argv)
 {
     size_t sort_method = QSORT;
+    size_t data_set = RAND;
     if (argc > 1) {
         if (strcmp(argv[1], "qsort") == 0) {
             printf("sort by qsort \n");
@@ -31,6 +35,27 @@ int main(int argc, char **argv)
     } else {
         printf("sort by qsort \n");
     }
+
+    if (argc > 2) {
+        if (strcmp(argv[2], "rand") == 0) {
+            printf("Dataset: RAND \n");
+            data_set = RAND;
+        } else if (strcmp(argv[2], "sawtooth") == 0) {
+            printf("Dataset: SAWTOOTH \n");
+            data_set = SAWTOOTH;
+        } else if (strcmp(argv[2], "stagger") == 0) {
+            printf("Dataset: STAGGER \n");
+            data_set = STAGGER;
+        } else if (strcmp(argv[2], "shuffle") == 0) {
+            printf("Dataset: SHUFFLE \n");
+            data_set = SHUFFLE;
+        } else {
+            fprintf(stderr, "Invalid data set.\n");
+            return -1;
+        }
+    } else {
+        printf("Dataset: RAND \n");
+    }
     int fd = open(KSORT_DEV, O_RDWR);
     if (fd < 0) {
         perror("Failed to open character device");
@@ -38,21 +63,42 @@ int main(int argc, char **argv)
     }
     struct timespec tt1, tt2;
     size_t n_elements = 21000;
-    FILE *time_f, *cmp_cnt_f;
+    size_t begin = 1000;
+
+    FILE *time_f, *cmp_cnt_f, *data_f;
     time_f = fopen("time.txt", "w");
-    cmp_cnt_f = fopen("cmp_cnt_rand.txt", "w");
+    data_f = fopen("data_dis.txt", "w");
+    cmp_cnt_f = fopen("cmp_cnt_mid9.txt", "w");
     ioctl(fd, sort_method);
-    for (size_t n = 2; n < n_elements + 1; n = n + 1000) {
+
+    for (size_t n = begin; n < n_elements + 1; n = n + 1000) {
         size_t size = n * sizeof(int);
+
         int *inbuf = malloc(size);
 
         if (!inbuf) {
-            printf("error while allocating inbuf");
+            printf("error while allocating inbuf \n");
             goto error;
         }
-
-        for (size_t i = 0; i < n; i++)
-            inbuf[i] = rand() % n;
+        size_t j = 0, k = 1;
+        for (size_t i = 0; i < n; i++) {
+            switch (data_set) {
+            case RAND:
+                inbuf[i] = rand() % n;
+                break;
+            case SAWTOOTH:
+                inbuf[i] = i % 5;
+                break;
+            case STAGGER:
+                inbuf[i] = (i * 100 + i) % n;
+                break;
+            case SHUFFLE:
+                inbuf[i] = (rand() % 2) ? (j += 2) : (k += 2);
+                break;
+            }
+            if (n == begin)
+                fprintf(data_f, "%zu %d \n", i, inbuf[i]);
+        }
 
         clock_gettime(CLOCK_REALTIME, &tt1);
         ssize_t r_sz = read(fd, inbuf, size);
