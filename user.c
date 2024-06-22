@@ -14,6 +14,7 @@
 #define SAWTOOTH 1
 #define STAGGER 2
 #define SHUFFLE 3
+#define PLATEAU 4
 #define KSORT_DEV "/dev/sort"
 
 int main(int argc, char **argv)
@@ -45,10 +46,12 @@ int main(int argc, char **argv)
             data_set = SAWTOOTH;
         } else if (strcmp(argv[2], "stagger") == 0) {
             printf("Dataset: STAGGER \n");
-            data_set = STAGGER;
         } else if (strcmp(argv[2], "shuffle") == 0) {
             printf("Dataset: SHUFFLE \n");
             data_set = SHUFFLE;
+        } else if (strcmp(argv[2], "plateau") == 0) {
+            printf("Dataset: PLATEAU \n");
+            data_set = PLATEAU;
         } else {
             fprintf(stderr, "Invalid data set.\n");
             return -1;
@@ -68,10 +71,10 @@ int main(int argc, char **argv)
     FILE *time_f, *cmp_cnt_f, *data_f;
     time_f = fopen("time.txt", "w");
     data_f = fopen("data_dis.txt", "w");
-    cmp_cnt_f = fopen("cmp_cnt_mid9.txt", "w");
+    cmp_cnt_f = fopen("cmp_cnt.txt", "w");
     ioctl(fd, sort_method);
 
-    for (size_t n = begin; n < n_elements + 1; n = n + 1000) {
+    for (size_t n = begin; n < n_elements + 1; n = n + 2) {
         size_t size = n * sizeof(int);
 
         int *inbuf = malloc(size);
@@ -94,6 +97,9 @@ int main(int argc, char **argv)
                 break;
             case SHUFFLE:
                 inbuf[i] = (rand() % 2) ? (j += 2) : (k += 2);
+                break;
+            case PLATEAU:
+                inbuf[i] = ((i * 100 + i) % n < 500) ? 0 : 500;
                 break;
             }
             if (n == begin)
